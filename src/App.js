@@ -6,35 +6,32 @@ import GlobalStyles from "./core-ui/Globals";
 import { ThemeProvider } from "styled-components";
 import { defaultWeather, clouds, rain, clear, thunderstorm, snow, drizzle, mist, smoke, fog, haze } from "./core-ui/Themes.styled";
 
-const WEATHER_KEY = process.env.REACT_APP_VERY_PRIVATE_KEY;
-const IP_KEY = process.env.REACT_APP_IP_KEY;
+const WEATHER_KEY = process.env.REACT_APP_VERY_PRIVATE_KEY || process.env.REACT_APP_WEATHER_KEY;
+const initialWeather = { name: "", country: "", temp: "", icon: "03d", weather: "", weatherDesc: "", feelsLike: "", humidity: "", wind: "", highest: "", lowest: "" };
+const themeMap = { clouds, rain, clear, thunderstorm, snow, drizzle, mist, smoke, fog, haze };
 
 
 function App() {
-  const [todayWeather, setTodayWeather] = useState({ name: "", country: "", temp: "", icon: "03d", weather: "", weatherDesc: "", feelsLike: "", humidity: "", wind: "", highest: "", lowest: "" });
-  const [searchedLocation, setSearchedLocation] = useState("Tbilisi");
-  const [lat, setLat] = useState("");
-  const [lon, setLon] = useState("");
-  const [searchDone, setSearchDone] = useState(false);
-  const [theme, setTheme] = useState('clear');
+  const [todayWeather, setTodayWeather] = useState(initialWeather);
+  const [theme, setTheme] = useState("defaultWeather");
   const [formValue, setFormValue] = useState({ searchedLocation: "" });
   const [formError, setFormError] = useState({});
   const [noData, setNoData] = useState(false);
-  const [loading, setLoading] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setFormError(validateForm(formValue));
-    if (formValue.searchedLocation === '') {
+    const trimmedCity = formValue.searchedLocation.trim();
+    const errors = validateForm({ searchedLocation: trimmedCity });
+    setFormError(errors);
+    if (errors.searchedLocation) {
       return null;
     }
-    else {
-      setSearchedLocation(formValue.searchedLocation);
 
-    }
+    fetchWeatherByCity(trimmedCity);
     setFormValue({ searchedLocation: "" });
   }
-  const handleValidation = async (e) => {
+  const handleValidation = (e) => {
     const { name, value } = e.target;
     setFormValue({ ...formValue, [name]: value });
   }
@@ -46,123 +43,60 @@ function App() {
     return errors;
   }
 
-  const setWeather = theme === "rain" ? rain : theme === "clouds" ? clouds : theme === "clear" ? clear : theme === "thunderstorm" ? thunderstorm : theme === "snow" ? snow : theme === "drizzle" ? drizzle : theme === "mist" ? mist : theme === "smoke" ? smoke : theme === "haze" ? haze : theme === "fog" ? fog : defaultWeather;
-
-  useEffect(() => {
-    let mounted = true;
-
-    fetch(`https://ipinfo.io?token=${process.env.REACT_APP_IP_KEY}`)
-
-    fetch(`https://ipinfo.io?token=${IP_KEY}`)
-
-      .then(response => response.json()).then(data => {
-        if (mounted) {
-          setLoading(true);
-          setNoData(false);
-          setSearchedLocation(data.city.toLowerCase());
-        }
-      })
-    return () => mounted = false;
-  }, []);
-
-
-  useEffect(() => {
-    setLoading(true);
-    setNoData(false);
-    if (searchedLocation.length === 0) {
+  const fetchWeatherByCity = async (city) => {
+    if (!WEATHER_KEY) {
+      setLoading(false);
+      setNoData(true);
+      setFormError({ searchedLocation: "Missing API key. Add REACT_APP_VERY_PRIVATE_KEY or REACT_APP_WEATHER_KEY in .env, then restart npm start" });
       return;
     }
-    else {
 
-      fetch(`http://api.openweathermap.org/geo/1.0/direct?q=${searchedLocation}&limit=1&appid=${process.env.REACT_APP_VERY_PRIVATE_KEY}`)
+    setLoading(true);
+    setNoData(false);
+    setFormError({});
 
-      fetch(`http://api.openweathermap.org/geo/1.0/direct?q=${searchedLocation}&limit=1&appid=${WEATHER_KEY}`)
+    try {
+      const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${WEATHER_KEY}&units=metric`);
+      const data = await response.json();
 
-        .then(response => response.json())
-        .then(data => {
-          if (data[0]?.local_names?.en !== undefined) {
-            setLat(data[0]?.lat);
-            setLon(data[0]?.lon);
-            setTodayWeather(prev => { return { ...prev, name: data[0]?.local_names?.en, country: data[0]?.country } })
-          }
-          else {
-            setSearchedLocation("");
-            setFormError({ searchedLocation: "You can search only for a city" })
-          }
-          setSearchDone(true);
+      if (!response.ok || !data?.main || !Array.isArray(data?.weather) || !data.weather[0]) {
+        if (response.status === 401 || Number(data?.cod) === 401) {
+          throw new Error("Invalid API key. Update .env and restart npm start");
+        }
+        throw new Error("City not found. Try format like London or London,GB");
+      }
 
-        }).catch((err) => {
-          console.log(err.message);
-        });
+      const weatherType = data.weather[0].main.toLowerCase();
+      setTodayWeather({
+        name: data.name || city,
+        country: data.sys?.country || "",
+        temp: Math.ceil(data.main.temp),
+        icon: data.weather[0].icon,
+        weather: weatherType,
+        weatherDesc: data.weather[0].description,
+        feelsLike: data.main.feels_like,
+        humidity: data.main.humidity,
+        wind: data.wind.speed,
+        highest: data.main.temp_max,
+        lowest: data.main.temp_min
+      });
+      setTheme(themeMap[weatherType] ? weatherType : "defaultWeather");
+      setNoData(false);
+    } catch (err) {
+      setNoData(true);
+      setTodayWeather(initialWeather);
+      setTheme("defaultWeather");
+      setFormError({ searchedLocation: err.message });
+    } finally {
+      setLoading(false);
     }
-
-
-  }, [searchedLocation]);
+  };
 
   useEffect(() => {
-    if (searchDone) {
+    fetchWeatherByCity("Tbilisi");
+  }, []);
 
-      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.REACT_APP_VERY_PRIVATE_KEY}&units=metric`)
-        .then(response => response.json())
-        .then(data => {
-          setTodayWeather({ ...todayWeather, temp: Math.ceil(data?.main?.temp), icon: data.weather[0].icon, weather: data.weather[0].main.toLowerCase(), weatherDesc: data.weather[0].description, feelsLike: data.main.feels_like, humidity: data.main.humidity, wind: data.wind.speed, highest: data.main.temp_max, lowest: data.main.temp_min });
-
-          fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_KEY}&units=metric`)
-            .then(response => response.json())
-            .then(data => {
-              setTodayWeather({ ...todayWeather, temp: Math.ceil(data?.main?.temp), icon: data.weather[0]?.icon, weather: data.weather[0]?.main.toLowerCase(), weatherDesc: data.weather[0]?.description, feelsLike: data.main.feels_like, humidity: data.main.humidity, wind: data.wind.speed, highest: data.main.temp_max, lowest: data.main.temp_min });
-
-              setLoading(false);
-            }).catch((err) => {
-              setLoading(false);
-              setNoData(true);
-              console.log(err.message, "errrr");
-            });
-        }
-        )
-    }
-    const toggleTheme = () => {
-      if (todayWeather.weather === '') {
-        setTheme('defaultWeather');
-      }
-      if (todayWeather.weather.toLowerCase() === 'clouds') {
-        setTheme('clouds');
-      }
-      if (todayWeather.weather.toLowerCase() === 'rain') {
-        setTheme('rain');
-      }
-      if (todayWeather.weather.toLowerCase() === 'clear') {
-        setTheme('clear');
-      }
-      if (todayWeather.weather.toLowerCase() === 'thunderstorm') {
-        setTheme('thunderstorm');
-      }
-      if (todayWeather.weather.toLowerCase() === 'snow') {
-        setTheme('snow');
-      }
-      if (todayWeather.weather.toLowerCase() === 'drizzle') {
-        setTheme('drizzle');
-      }
-      else if (todayWeather.weather.toLowerCase() === 'mist') {
-        setTheme('mist');
-      }
-      if (todayWeather.weather.toLowerCase() === 'smoke') {
-        setTheme('smoke');
-      }
-      if (todayWeather.weather.toLowerCase() === 'fog') {
-        setTheme('fog');
-      }
-      if (todayWeather.weather.toLowerCase() === 'haze') {
-        setTheme('haze');
-      }
-      //, Dust, Sand, Ash, Squall, Tornado
-    }
-
-    toggleTheme();
-
-    return () => setSearchDone(false);
-
-  }, [searchDone, lat, lon, todayWeather, searchedLocation]);
+  const setWeather = themeMap[theme] || defaultWeather;
 
 
   return (

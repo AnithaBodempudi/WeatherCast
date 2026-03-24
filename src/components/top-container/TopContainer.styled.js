@@ -21,7 +21,7 @@ const SearchInput = styled.input`
     background-color: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(5px);
     border: 1px solid ${({ theme }) => theme.colors.color};
-    color: ${({ theme }) => theme.colors.fontColor};
+    color: ${({ theme }) => theme.colors.fontColor || theme.colors.color};
     padding: 10px;
     width: 3rem;
     height: 3.125rem;
@@ -65,7 +65,7 @@ const SearchIcon = styled.img`
 
 const ErrorLabel = styled.label`
     position: absolute;
-    color: ${({ theme }) => theme.colors.fontColor};
+  color: ${({ theme }) => theme.colors.fontColor || theme.colors.color};
     font-size: 1rem;
     top: 4rem;
     @media (max-width: 470px) {

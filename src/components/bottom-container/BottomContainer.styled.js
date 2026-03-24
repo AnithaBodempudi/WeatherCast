@@ -12,7 +12,7 @@ align-items: center;
 justify-content: center;
 text-align: center;
 position: relative;
-color: ${({ theme }) => theme.colors.fontColor};
+color: ${({ theme }) => theme.colors.fontColor || theme.colors.color};
 @media (max-width: 470px) {
     flex-direction: column;
     gap: 1rem;

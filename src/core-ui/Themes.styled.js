@@ -32,9 +32,9 @@ export const defaultWeather = {
 export const clouds = {
     name: "clouds",
     colors: {
-        color: `${colorPallete.clouds}`,
+        color: `${fontPallete.dark}`,
         iconBg: `${colorPallete.clouds}`,
-        fontColor: `${fontPallete.light}`
+        fontColor: `${fontPallete.dark}`
     }
 
 }
@@ -76,6 +76,7 @@ export const snow = {
     colors: {
         color: `${colorPallete.snow}`,
         iconBg: `${colorPallete.snow}`,
+        fontColor: `${fontPallete.dark}`
     }
 }
 export const mist = {

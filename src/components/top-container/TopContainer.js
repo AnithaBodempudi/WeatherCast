@@ -6,9 +6,9 @@ const TopContainer = ({ handleSubmit, handleValidation, formValue, formError }) 
     return (
         <SearchHeader>
             <SearchForm onSubmit={handleSubmit}>
-                <SearchInput className="input" type="text" name="searchedLocation" onChange={handleValidation} value={formValue.searchedLocation} />
+                <SearchInput className="input" type="text" name="searchedLocation" onChange={handleValidation} value={formValue.searchedLocation} placeholder="Search city" />
                 <SearchButton type="submit">
-                    <SearchIcon onClick={handleSubmit} src={search} alt="" aria-hidden="true" />
+                    <SearchIcon src={search} alt="" aria-hidden="true" />
                     <span className="hidden-label">search</span>
                 </SearchButton>
             </SearchForm>

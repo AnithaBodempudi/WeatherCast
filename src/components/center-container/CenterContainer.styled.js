@@ -14,7 +14,7 @@ min-width: 25rem;
 width: 100%;
 font-size: 2.5rem;
 position: relative;
-color: ${({ theme }) => theme.colors.fontColor};
+color: ${({ theme }) => theme.colors.fontColor || theme.colors.color};
 `;
 
 const HighLow = styled.section`
